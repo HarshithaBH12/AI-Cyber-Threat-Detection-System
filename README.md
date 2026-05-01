@@ -22,8 +22,7 @@ Input → Agents → Merge → Decision → Response
 - Repetition Detector
 - Domain Checker
 
- ## 🖼️ Workflow
-![Workflow](workflow.png)
+## 🖼️ Workflow![Workflow](workflow.png)
 
 ## 📊 Example Output
 🔴 High Risk | Type: Phishing | Score: 9 | Confidence: 96%  

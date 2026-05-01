@@ -1,0 +1,279 @@
+{
+  "name": "AI Cyber Threat Detection & Response System",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -336,
+        336
+      ],
+      "id": "cadd7b0c-7b6c-4d31-ac20-2854cf741c92",
+      "name": "When chat message received",
+      "webhookId": "269509e5-411a-4953-944c-9be5023fbf8d"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.chatInput?.toLowerCase() || \"\";\n\nlet repeatFlag = false;\n\n// detect repeated words\nconst words = msg.split(\" \");\nconst seen = {};\n\nfor (let word of words) {\n  seen[word] = (seen[word] || 0) + 1;\n  if (seen[word] > 2) {\n    repeatFlag = true;\n    break;\n  }\n}\n\nreturn [\n  {\n    json: {\n      repeatFlag\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        624
+      ],
+      "id": "6c686cb7-2322-4b78-a2da-46cd931c6c56",
+      "name": "Repetition Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.chatInput?.toLowerCase() || \"\";\n\nlet domainFlag = false;\n\n// suspicious domains\nconst badDomains = [\n  \"bit.ly\",\n  \"tinyurl\",\n  \"grabify\",\n  \".xyz\",\n  \".top\",\n  \".click\"\n];\n\nfor (let domain of badDomains) {\n  if (msg.includes(domain)) {\n    domainFlag = true;\n    break;\n  }\n}\n\nreturn [\n  {\n    json: {\n      domainFlag\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        800
+      ],
+      "id": "25374335-9f23-437e-af6d-bf0efbb404bd",
+      "name": "Domain Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = ($json.chatInput || \"\").toLowerCase();\n\nlet urgencyFlag = false;\n\nif (\n  text.includes(\"urgent\") ||\n  text.includes(\"immediately\") ||\n  text.includes(\"asap\")\n) {\n  urgencyFlag = true;\n}\n\nreturn [\n  {\n    json: {\n      urgencyFlag\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -48
+      ],
+      "id": "03362c73-92ba-4d12-8822-6d4f2857780d",
+      "name": "🚨 Urgency Detector"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = ($json.chatInput || \"\").toLowerCase();\n\n// extract URL using regex\nconst urlMatch = text.match(/https?:\\/\\/[^\\s]+/);\n\nlet linkFlag = false;\nlet suspicious = false;\nlet reasons = [];\n\nif (urlMatch) {\n  linkFlag = true;\n  const url = urlMatch[0];\n\n  // 🔍 Rule 1: check shorteners\n  const shorteners = [\"bit.ly\", \"tinyurl\", \"t.co\", \"goo.gl\"];\n  if (shorteners.some(domain => url.includes(domain))) {\n    suspicious = true;\n    reasons.push(\"Shortened URL detected\");\n  }\n\n  // 🔍 Rule 2: check suspicious domains\n  const badDomains = [\".xyz\", \".top\", \".click\", \".ru\"];\n  if (badDomains.some(domain => url.includes(domain))) {\n    suspicious = true;\n    reasons.push(\"Suspicious domain extension\");\n  }\n\n  // 🔍 Rule 3: too many numbers\n  const digitCount = (url.match(/\\d/g) || []).length;\n  if (digitCount > 5) {\n    suspicious = true;\n    reasons.push(\"Too many numbers in URL\");\n  }\n\n  // 🔍 Rule 4: long URL\n  if (url.length > 50) {\n    suspicious = true;\n    reasons.push(\"Unusually long URL\");\n  }\n\n  // 🔍 Rule 5: fake keywords\n  const fakeWords = [\"login\", \"verify\", \"account\", \"secure\", \"update\"];\n  if (fakeWords.some(word => url.includes(word))) {\n    suspicious = true;\n    reasons.push(\"Contains phishing keywords\");\n  }\n}\n\nreturn [\n  {\n    json: {\n      linkFlag,\n      linkSuspicious: suspicious,\n      linkReasons: reasons.length > 0 ? reasons : [\"No suspicious patterns\"]\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        128
+      ],
+      "id": "92320353-45e0-4507-bac9-2403ea06c9d7",
+      "name": "🔗 Link Analyzer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.chatInput?.toLowerCase() || \"\";\n\nlet toneFlag = false;\n\n// Emotional / pressure words\nconst toneWords = [\"immediately\", \"now\", \"limited\", \"hurry\", \"act fast\", \"last chance\"];\n\nfor (let word of toneWords) {\n  if (msg.includes(word)) {\n    toneFlag = true;\n    break;\n  }\n}\n\nreturn [\n  {\n    json: {\n      toneFlag\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        288
+      ],
+      "id": "73b778ed-2a9f-4f31-a80f-76303c75217c",
+      "name": "🧠 Tone Analyzer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.chatInput?.toLowerCase() || \"\";\n\nlet spamFlag = false;\n\n// Common spam keywords\nconst spamWords = [\n  \"free\",\n  \"win\",\n  \"winner\",\n  \"prize\",\n  \"offer\",\n  \"click here\",\n  \"claim\",\n  \"reward\",\n  \"gift\",\n  \"limited offer\"\n];\n\nfor (let word of spamWords) {\n  if (msg.includes(word)) {\n    spamFlag = true;\n    break;\n  }\n}\n\nreturn [\n  {\n    json: {\n      spamFlag\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        448
+      ],
+      "id": "f71f5a79-376b-4eb7-9120-94417ff457a2",
+      "name": "Spam Agent"
+    },
+    {
+      "parameters": {
+        "numberInputs": 6
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        912,
+        256
+      ],
+      "id": "b71e4bcd-8441-4d10-83a4-84f5d43cbeb7",
+      "name": "🔄 Signal Combiner"
+    },
+    {
+      "parameters": {
+        "jsCode": "let urgency = false;\nlet link = false;\nlet tone = false;\nlet spam = false;\nlet repeat = false;\nlet domain = false;\nlet linkSuspicious = false;\nlet linkReasons = [];\n\n// collect flags\nfor (const item of items) {\n  if (item.json.linkReasons !== undefined) linkReasons = item.json.linkReasons;\n  if (item.json.urgencyFlag !== undefined) urgency = item.json.urgencyFlag;\n  if (item.json.linkFlag !== undefined) link = item.json.linkFlag;\n  if (item.json.linkSuspicious !== undefined) linkSuspicious = item.json.linkSuspicious;\n  if (item.json.toneFlag !== undefined) tone = item.json.toneFlag;\n  if (item.json.spamFlag !== undefined) spam = item.json.spamFlag;\n  if (item.json.repeatFlag !== undefined) repeat = item.json.repeatFlag;\n  if (item.json.domainFlag !== undefined) domain = item.json.domainFlag;\n}\n\n// scoring\nlet score = 0;\nlet reasons = [];\n\nif (urgency) { score += 2; reasons.push(\"Urgency detected\"); }\nif (linkSuspicious) {score += 4; reasons.push(\"Suspicious link detected\");\n} else if (link) { score += 1; reasons.push(\"Link present\"); }\nif (tone) { score += 2; reasons.push(\"Emotional pressure\"); }\nif (spam) { score += 3; reasons.push(\"Spam keywords\"); }\nif (repeat) { score += 1; reasons.push(\"Repeated words\"); }\nif (domain) { score += 3; reasons.push(\"Suspicious domain\"); }\n\n// threat level\nlet threatLevel = \"Safe\";\n\nif (score >= 7) {\n  threatLevel = \"🔴 High Risk\";\n} else if (score >= 3) {\n  threatLevel = \"🟡 Suspicious\";\n}\n\n// 🔥 NEW: Threat type\nlet threatType = \"Normal\";\n\nif (link && urgency) {\n  threatType = \"Phishing\";\n} else if (spam) {\n  threatType = \"Spam\";\n} else if (tone) {\n  threatType = \"Social Engineering\";\n}\n\n// 🔥 NEW: Confidence\nlet confidence = Math.min(100, score * 12);\n\n// 🔥 NEW: Action\nlet action = \"No action needed\";\n\nif (threatLevel.includes(\"High Risk\")) {\n  action = \"Block message + Alert user\";\n} else if (threatLevel.includes(\"Suspicious\")) {\n  action = \"Warn user to be cautious\";\n}\n\nreturn [\n  {\n    json: {\n      threatLevel,\n      threatType,\n      score,\n      confidence,\n      reasons,\n      action\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        320
+      ],
+      "id": "3728e663-06cc-429c-a1ef-f61b2a570254",
+      "name": "🎯 Decision Engine"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\n\nlet reasonText = data.reasons.length > 0\n  ? data.reasons.map(r => \"• \" + r).join(\" | \")\n  : \"No issues detected\";\n\nlet output =\n  \"🔐 Cyber Threat Analysis Report → \" +\n  data.threatLevel +\n  \" | Type: \" + data.threatType +\n  \" | Score: \" + data.score +\n  \" | Confidence: \" + data.confidence + \"%\" +\n  \" | Reasons: \" + reasonText +\n  \" | Action: \" + data.action;\n\nreturn [\n  {\n    json: {\n      text: output\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        320
+      ],
+      "id": "328621d6-c804-4824-8de1-2713d0ab5fa3",
+      "name": "📢 Response Generator"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "🔗 Link Analyzer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🧠 Tone Analyzer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🚨 Urgency Detector",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spam Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Repetition Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Domain Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repetition Agent": {
+      "main": [
+        [
+          {
+            "node": "🔄 Signal Combiner",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Domain Agent": {
+      "main": [
+        [
+          {
+            "node": "🔄 Signal Combiner",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "🚨 Urgency Detector": {
+      "main": [
+        [
+          {
+            "node": "🔄 Signal Combiner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Link Analyzer": {
+      "main": [
+        [
+          {
+            "node": "🔄 Signal Combiner",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🧠 Tone Analyzer": {
+      "main": [
+        [
+          {
+            "node": "🔄 Signal Combiner",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Spam Agent": {
+      "main": [
+        [
+          {
+            "node": "🔄 Signal Combiner",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "🔄 Signal Combiner": {
+      "main": [
+        [
+          {
+            "node": "🎯 Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "📢 Response Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📢 Response Generator": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1eddc521-e7d4-4aba-a793-db69b77aa6e5",
+  "meta": {
+    "instanceId": "792006ef7a7ebc36fc5abd99bf921da5e1552f75133b4eebce244bda1ddbd0bd"
+  },
+  "id": "hwLTyixAR8gcufzO",
+  "tags": []
+}
